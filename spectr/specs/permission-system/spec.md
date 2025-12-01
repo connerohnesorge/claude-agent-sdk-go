@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TODO: Add purpose description
+Specifies the permission system including callback signatures, permission results, and hook matchers for controlling tool access.
 
 ## Requirements
 

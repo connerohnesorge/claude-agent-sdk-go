@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TODO: Add purpose description
+Defines the SDKStatus type for representing system status values like compacting that indicate ongoing SDK operations.
 
 ## Requirements
 

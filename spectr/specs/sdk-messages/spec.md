@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TODO: Add purpose description
+Defines all SDK message types for tool progress, auth status, system status, hook responses, and user message replay.
 
 ## Requirements
 

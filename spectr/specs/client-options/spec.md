@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TODO: Add purpose description
+Specifies all configuration options for the Claude SDK client including budget limits, output formats, plugins, and permission controls.
 
 ## Requirements
 

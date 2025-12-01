@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TODO: Add purpose description
+Defines the Query interface methods for interacting with active Claude sessions including thinking tokens and account information.
 
 ## Requirements
 

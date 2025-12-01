@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TODO: Add purpose description
+Specifies the SDKResultMessage structure for query completion including structured output results and error collections.
 
 ## Requirements
 

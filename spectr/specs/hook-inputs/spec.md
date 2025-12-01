@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TODO: Add purpose description
+Specifies the input payload types provided to hook callbacks for different events like permission requests and subagent starts.
 
 ## Requirements
 

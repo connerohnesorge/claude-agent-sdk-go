@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TODO: Add purpose description
+Specifies the input types for built-in tools including AgentInput for subagents and BashInput with sandbox control options.
 
 ## Requirements
 

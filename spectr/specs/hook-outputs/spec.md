@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TODO: Add purpose description
+Defines the output types that hook callbacks return to control permission decisions, provide context, and modify tool behavior.
 
 ## Requirements
 

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TODO: Add purpose description
+Defines the AgentDefinition type for configuring custom subagents with model selection, prompts, and tool access controls.
 
 ## Requirements
 

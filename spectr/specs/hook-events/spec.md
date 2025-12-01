@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TODO: Add purpose description
+Defines the hook event types that can trigger callbacks during Claude SDK operations including tool use, permissions, and subagent lifecycle.
 
 ## Requirements
 

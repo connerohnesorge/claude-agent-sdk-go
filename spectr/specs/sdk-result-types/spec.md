@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TODO: Add purpose description
+Specifies the result subtype constants for different query outcomes including budget exceeded and structured output retry errors.
 
 ## Requirements
 
