@@ -1603,3 +1603,487 @@ func TestSDKResultMessageEdgeCases(t *testing.T) {
 		})
 	}
 }
+
+// ============================================================================
+// Sandbox Configuration Tests
+// ============================================================================
+
+// TestSandboxIgnoreViolationsSerialization verifies JSON marshaling for SandboxIgnoreViolations.
+func TestSandboxIgnoreViolationsSerialization(t *testing.T) {
+	tests := []struct {
+		name     string
+		ignore   claude.SandboxIgnoreViolations
+		expected string
+	}{
+		{
+			name: "file violations only",
+			ignore: claude.SandboxIgnoreViolations{
+				File: []string{"/tmp/test.txt", "/var/log/app.log"},
+			},
+			expected: `{"file":["/tmp/test.txt","/var/log/app.log"]}`,
+		},
+		{
+			name: "network violations only",
+			ignore: claude.SandboxIgnoreViolations{
+				Network: []string{"example.com", "api.service.io"},
+			},
+			expected: `{"network":["example.com","api.service.io"]}`,
+		},
+		{
+			name: "both file and network violations",
+			ignore: claude.SandboxIgnoreViolations{
+				File:    []string{"/tmp/safe.txt"},
+				Network: []string{"trusted.host"},
+			},
+			expected: `{"file":["/tmp/safe.txt"],"network":["trusted.host"]}`,
+		},
+		{
+			name:     "empty struct",
+			ignore:   claude.SandboxIgnoreViolations{},
+			expected: `{}`,
+		},
+		{
+			name: "nil slices",
+			ignore: claude.SandboxIgnoreViolations{
+				File:    nil,
+				Network: nil,
+			},
+			expected: `{}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data, err := json.Marshal(tt.ignore)
+			if err != nil {
+				t.Fatalf("failed to marshal SandboxIgnoreViolations: %v", err)
+			}
+
+			if string(data) != tt.expected {
+				t.Errorf("marshaling mismatch:\nexpected: %s\ngot:      %s", tt.expected, string(data))
+			}
+
+			var decoded claude.SandboxIgnoreViolations
+			if err := json.Unmarshal(data, &decoded); err != nil {
+				t.Fatalf("failed to unmarshal SandboxIgnoreViolations: %v", err)
+			}
+
+			// Compare slices
+			if len(decoded.File) != len(tt.ignore.File) {
+				t.Errorf("file length mismatch: expected %d, got %d", len(tt.ignore.File), len(decoded.File))
+			}
+			for i := range decoded.File {
+				if decoded.File[i] != tt.ignore.File[i] {
+					t.Errorf("file[%d] mismatch: expected %s, got %s", i, tt.ignore.File[i], decoded.File[i])
+				}
+			}
+
+			if len(decoded.Network) != len(tt.ignore.Network) {
+				t.Errorf("network length mismatch: expected %d, got %d", len(tt.ignore.Network), len(decoded.Network))
+			}
+			for i := range decoded.Network {
+				if decoded.Network[i] != tt.ignore.Network[i] {
+					t.Errorf("network[%d] mismatch: expected %s, got %s", i, tt.ignore.Network[i], decoded.Network[i])
+				}
+			}
+		})
+	}
+}
+
+// TestSandboxNetworkConfigSerialization verifies JSON marshaling for SandboxNetworkConfig.
+func TestSandboxNetworkConfigSerialization(t *testing.T) {
+	tests := []struct {
+		name     string
+		network  claude.SandboxNetworkConfig
+		expected string
+	}{
+		{
+			name: "unix sockets only",
+			network: claude.SandboxNetworkConfig{
+				AllowUnixSockets: []string{"/var/run/docker.sock"},
+			},
+			expected: `{"allowUnixSockets":["/var/run/docker.sock"]}`,
+		},
+		{
+			name: "allow all unix sockets",
+			network: claude.SandboxNetworkConfig{
+				AllowAllUnixSockets: true,
+			},
+			expected: `{"allowAllUnixSockets":true}`,
+		},
+		{
+			name: "local binding",
+			network: claude.SandboxNetworkConfig{
+				AllowLocalBinding: true,
+			},
+			expected: `{"allowLocalBinding":true}`,
+		},
+		{
+			name: "http proxy only",
+			network: claude.SandboxNetworkConfig{
+				HttpProxyPort: 8080,
+			},
+			expected: `{"httpProxyPort":8080}`,
+		},
+		{
+			name: "socks proxy only",
+			network: claude.SandboxNetworkConfig{
+				SocksProxyPort: 1080,
+			},
+			expected: `{"socksProxyPort":1080}`,
+		},
+		{
+			name: "both proxies",
+			network: claude.SandboxNetworkConfig{
+				HttpProxyPort:  8080,
+				SocksProxyPort: 1080,
+			},
+			expected: `{"httpProxyPort":8080,"socksProxyPort":1080}`,
+		},
+		{
+			name: "all fields populated",
+			network: claude.SandboxNetworkConfig{
+				AllowUnixSockets:    []string{"/var/run/docker.sock", "/tmp/custom.sock"},
+				AllowAllUnixSockets: false,
+				AllowLocalBinding:   true,
+				HttpProxyPort:       8080,
+				SocksProxyPort:      1080,
+			},
+			expected: `{"allowUnixSockets":["/var/run/docker.sock","/tmp/custom.sock"],"allowLocalBinding":true,"httpProxyPort":8080,"socksProxyPort":1080}`,
+		},
+		{
+			name:     "empty struct",
+			network:  claude.SandboxNetworkConfig{},
+			expected: `{}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data, err := json.Marshal(tt.network)
+			if err != nil {
+				t.Fatalf("failed to marshal SandboxNetworkConfig: %v", err)
+			}
+
+			if string(data) != tt.expected {
+				t.Errorf("marshaling mismatch:\nexpected: %s\ngot:      %s", tt.expected, string(data))
+			}
+
+			var decoded claude.SandboxNetworkConfig
+			if err := json.Unmarshal(data, &decoded); err != nil {
+				t.Fatalf("failed to unmarshal SandboxNetworkConfig: %v", err)
+			}
+
+			// Verify fields
+			if decoded.AllowAllUnixSockets != tt.network.AllowAllUnixSockets {
+				t.Errorf("allowAllUnixSockets mismatch: expected %v, got %v", tt.network.AllowAllUnixSockets, decoded.AllowAllUnixSockets)
+			}
+			if decoded.AllowLocalBinding != tt.network.AllowLocalBinding {
+				t.Errorf("allowLocalBinding mismatch: expected %v, got %v", tt.network.AllowLocalBinding, decoded.AllowLocalBinding)
+			}
+			if decoded.HttpProxyPort != tt.network.HttpProxyPort {
+				t.Errorf("httpProxyPort mismatch: expected %d, got %d", tt.network.HttpProxyPort, decoded.HttpProxyPort)
+			}
+			if decoded.SocksProxyPort != tt.network.SocksProxyPort {
+				t.Errorf("socksProxyPort mismatch: expected %d, got %d", tt.network.SocksProxyPort, decoded.SocksProxyPort)
+			}
+		})
+	}
+}
+
+// TestSandboxSettingsSerialization verifies JSON marshaling for SandboxSettings.
+func TestSandboxSettingsSerialization(t *testing.T) {
+	tests := []struct {
+		name     string
+		sandbox  claude.SandboxSettings
+		expected string
+	}{
+		{
+			name: "enabled only",
+			sandbox: claude.SandboxSettings{
+				Enabled: true,
+			},
+			expected: `{"enabled":true}`,
+		},
+		{
+			name: "enabled with auto-allow",
+			sandbox: claude.SandboxSettings{
+				Enabled:                  true,
+				AutoAllowBashIfSandboxed: true,
+			},
+			expected: `{"enabled":true,"autoAllowBashIfSandboxed":true}`,
+		},
+		{
+			name: "with excluded commands",
+			sandbox: claude.SandboxSettings{
+				Enabled:          true,
+				ExcludedCommands: []string{"docker", "git"},
+			},
+			expected: `{"enabled":true,"excludedCommands":["docker","git"]}`,
+		},
+		{
+			name: "with allow unsandboxed commands",
+			sandbox: claude.SandboxSettings{
+				Enabled:                  true,
+				AllowUnsandboxedCommands: true,
+			},
+			expected: `{"enabled":true,"allowUnsandboxedCommands":true}`,
+		},
+		{
+			name: "with network config",
+			sandbox: claude.SandboxSettings{
+				Enabled: true,
+				Network: &claude.SandboxNetworkConfig{
+					AllowUnixSockets: []string{"/var/run/docker.sock"},
+					HttpProxyPort:    8080,
+				},
+			},
+			expected: `{"enabled":true,"network":{"allowUnixSockets":["/var/run/docker.sock"],"httpProxyPort":8080}}`,
+		},
+		{
+			name: "with ignore violations",
+			sandbox: claude.SandboxSettings{
+				Enabled: true,
+				IgnoreViolations: &claude.SandboxIgnoreViolations{
+					File:    []string{"/tmp/safe.txt"},
+					Network: []string{"trusted.host"},
+				},
+			},
+			expected: `{"enabled":true,"ignoreViolations":{"file":["/tmp/safe.txt"],"network":["trusted.host"]}}`,
+		},
+		{
+			name: "with weaker nested sandbox",
+			sandbox: claude.SandboxSettings{
+				Enabled:                   true,
+				EnableWeakerNestedSandbox: true,
+			},
+			expected: `{"enabled":true,"enableWeakerNestedSandbox":true}`,
+		},
+		{
+			name: "all fields populated",
+			sandbox: claude.SandboxSettings{
+				Enabled:                   true,
+				AutoAllowBashIfSandboxed:  true,
+				ExcludedCommands:          []string{"docker", "git", "npm"},
+				AllowUnsandboxedCommands:  true,
+				Network:                   &claude.SandboxNetworkConfig{HttpProxyPort: 8080},
+				IgnoreViolations:          &claude.SandboxIgnoreViolations{File: []string{"/tmp/test.txt"}},
+				EnableWeakerNestedSandbox: true,
+			},
+			expected: `{"enabled":true,"autoAllowBashIfSandboxed":true,"excludedCommands":["docker","git","npm"],"allowUnsandboxedCommands":true,"network":{"httpProxyPort":8080},"ignoreViolations":{"file":["/tmp/test.txt"]},"enableWeakerNestedSandbox":true}`,
+		},
+		{
+			name:     "empty/disabled sandbox",
+			sandbox:  claude.SandboxSettings{},
+			expected: `{}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data, err := json.Marshal(tt.sandbox)
+			if err != nil {
+				t.Fatalf("failed to marshal SandboxSettings: %v", err)
+			}
+
+			if string(data) != tt.expected {
+				t.Errorf("marshaling mismatch:\nexpected: %s\ngot:      %s", tt.expected, string(data))
+			}
+
+			var decoded claude.SandboxSettings
+			if err := json.Unmarshal(data, &decoded); err != nil {
+				t.Fatalf("failed to unmarshal SandboxSettings: %v", err)
+			}
+
+			// Verify key fields
+			if decoded.Enabled != tt.sandbox.Enabled {
+				t.Errorf("enabled mismatch: expected %v, got %v", tt.sandbox.Enabled, decoded.Enabled)
+			}
+			if decoded.AutoAllowBashIfSandboxed != tt.sandbox.AutoAllowBashIfSandboxed {
+				t.Errorf("autoAllowBashIfSandboxed mismatch: expected %v, got %v", tt.sandbox.AutoAllowBashIfSandboxed, decoded.AutoAllowBashIfSandboxed)
+			}
+			if decoded.AllowUnsandboxedCommands != tt.sandbox.AllowUnsandboxedCommands {
+				t.Errorf("allowUnsandboxedCommands mismatch: expected %v, got %v", tt.sandbox.AllowUnsandboxedCommands, decoded.AllowUnsandboxedCommands)
+			}
+			if decoded.EnableWeakerNestedSandbox != tt.sandbox.EnableWeakerNestedSandbox {
+				t.Errorf("enableWeakerNestedSandbox mismatch: expected %v, got %v", tt.sandbox.EnableWeakerNestedSandbox, decoded.EnableWeakerNestedSandbox)
+			}
+		})
+	}
+}
+
+// TestClientOptionsWithSandbox verifies the Sandbox field in Options struct.
+func TestClientOptionsWithSandbox(t *testing.T) {
+	type OptionsSubset struct {
+		Sandbox *claude.SandboxSettings `json:"sandbox,omitempty"`
+	}
+
+	tests := []struct {
+		name    string
+		opts    OptionsSubset
+		wantNil bool
+	}{
+		{
+			name: "sandbox enabled",
+			opts: OptionsSubset{
+				Sandbox: &claude.SandboxSettings{
+					Enabled:                  true,
+					AutoAllowBashIfSandboxed: true,
+				},
+			},
+			wantNil: false,
+		},
+		{
+			name: "sandbox with network config",
+			opts: OptionsSubset{
+				Sandbox: &claude.SandboxSettings{
+					Enabled: true,
+					Network: &claude.SandboxNetworkConfig{
+						AllowUnixSockets: []string{"/var/run/docker.sock"},
+						HttpProxyPort:    8080,
+					},
+				},
+			},
+			wantNil: false,
+		},
+		{
+			name: "nil sandbox",
+			opts: OptionsSubset{
+				Sandbox: nil,
+			},
+			wantNil: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data, err := json.Marshal(tt.opts)
+			if err != nil {
+				t.Fatalf("failed to marshal options: %v", err)
+			}
+
+			var raw map[string]interface{}
+			if err := json.Unmarshal(data, &raw); err != nil {
+				t.Fatalf("failed to unmarshal to map: %v", err)
+			}
+
+			_, hasSandbox := raw["sandbox"]
+			if tt.wantNil && hasSandbox {
+				t.Error("expected 'sandbox' to be omitted (nil)")
+			}
+			if !tt.wantNil && !hasSandbox {
+				t.Error("expected 'sandbox' field in JSON")
+			}
+
+			var decoded OptionsSubset
+			if err := json.Unmarshal(data, &decoded); err != nil {
+				t.Fatalf("failed to unmarshal options: %v", err)
+			}
+
+			if tt.wantNil {
+				if decoded.Sandbox != nil {
+					t.Error("expected Sandbox to be nil")
+				}
+			} else {
+				if decoded.Sandbox == nil {
+					t.Fatal("expected Sandbox to be non-nil")
+				}
+				if decoded.Sandbox.Enabled != tt.opts.Sandbox.Enabled {
+					t.Errorf("enabled mismatch: expected %v, got %v", tt.opts.Sandbox.Enabled, decoded.Sandbox.Enabled)
+				}
+			}
+		})
+	}
+
+	// Verify Options struct has the field with correct type
+	fullOpts := claude.Options{
+		Sandbox: &claude.SandboxSettings{
+			Enabled:          true,
+			ExcludedCommands: []string{"docker"},
+		},
+	}
+	if fullOpts.Sandbox == nil {
+		t.Fatal("Options.Sandbox should not be nil")
+	}
+	if !fullOpts.Sandbox.Enabled {
+		t.Error("Options.Sandbox.Enabled should be true")
+	}
+}
+
+// TestSandboxJSONFieldNames verifies JSON field names are in camelCase.
+func TestSandboxJSONFieldNames(t *testing.T) {
+	sandbox := claude.SandboxSettings{
+		Enabled:                   true,
+		AutoAllowBashIfSandboxed:  true,
+		ExcludedCommands:          []string{"docker"},
+		AllowUnsandboxedCommands:  true,
+		EnableWeakerNestedSandbox: true,
+		Network: &claude.SandboxNetworkConfig{
+			AllowUnixSockets:    []string{"/var/run/docker.sock"},
+			AllowAllUnixSockets: true,
+			AllowLocalBinding:   true,
+			HttpProxyPort:       8080,
+			SocksProxyPort:      1080,
+		},
+		IgnoreViolations: &claude.SandboxIgnoreViolations{
+			File:    []string{"/tmp/test.txt"},
+			Network: []string{"example.com"},
+		},
+	}
+
+	data, err := json.Marshal(sandbox)
+	if err != nil {
+		t.Fatalf("failed to marshal SandboxSettings: %v", err)
+	}
+
+	var raw map[string]interface{}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	// Verify main fields are in camelCase
+	expectedMainFields := []string{
+		"enabled",
+		"autoAllowBashIfSandboxed",
+		"excludedCommands",
+		"allowUnsandboxedCommands",
+		"enableWeakerNestedSandbox",
+		"network",
+		"ignoreViolations",
+	}
+	for _, field := range expectedMainFields {
+		if _, ok := raw[field]; !ok {
+			t.Errorf("expected field '%s' in JSON (camelCase)", field)
+		}
+	}
+
+	// Verify network fields
+	network, ok := raw["network"].(map[string]interface{})
+	if !ok {
+		t.Fatal("expected network to be an object")
+	}
+	expectedNetworkFields := []string{
+		"allowUnixSockets",
+		"allowAllUnixSockets",
+		"allowLocalBinding",
+		"httpProxyPort",
+		"socksProxyPort",
+	}
+	for _, field := range expectedNetworkFields {
+		if _, ok := network[field]; !ok {
+			t.Errorf("expected field 'network.%s' in JSON (camelCase)", field)
+		}
+	}
+
+	// Verify ignoreViolations fields
+	ignoreViolations, ok := raw["ignoreViolations"].(map[string]interface{})
+	if !ok {
+		t.Fatal("expected ignoreViolations to be an object")
+	}
+	expectedIgnoreFields := []string{"file", "network"}
+	for _, field := range expectedIgnoreFields {
+		if _, ok := ignoreViolations[field]; !ok {
+			t.Errorf("expected field 'ignoreViolations.%s' in JSON (camelCase)", field)
+		}
+	}
+}
