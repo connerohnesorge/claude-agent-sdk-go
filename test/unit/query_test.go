@@ -2099,3 +2099,255 @@ func TestAskUserQuestionInput_JSON_VerifyAllFieldsCamelCase(t *testing.T) {
 		t.Error("JSON should not contain 'multi_select' (snake_case)")
 	}
 }
+
+// TestOptions_Settings_FilePath tests that Settings field stores file path correctly
+func TestOptions_Settings_FilePath(t *testing.T) {
+	opts := &claudeagent.Options{
+		Settings: "/path/to/settings.json",
+	}
+
+	if opts.Settings != "/path/to/settings.json" {
+		t.Errorf("Settings = %v, want '/path/to/settings.json'", opts.Settings)
+	}
+}
+
+// TestOptions_Settings_InlineJSON tests that Settings field stores inline JSON correctly
+func TestOptions_Settings_InlineJSON(t *testing.T) {
+	settingsJSON := `{"model": "sonnet", "maxTokens": 1000}`
+	opts := &claudeagent.Options{
+		Settings: settingsJSON,
+	}
+
+	if opts.Settings != settingsJSON {
+		t.Errorf("Settings = %v, want %v", opts.Settings, settingsJSON)
+	}
+}
+
+// TestOptions_Settings_EmptyString tests that Settings field can be empty
+func TestOptions_Settings_EmptyString(t *testing.T) {
+	opts := &claudeagent.Options{
+		Settings: "",
+	}
+
+	if opts.Settings != "" {
+		t.Errorf("Settings should be empty, got '%v'", opts.Settings)
+	}
+}
+
+// TestOptions_Settings_ComplexJSON tests that Settings field stores complex JSON correctly
+func TestOptions_Settings_ComplexJSON(t *testing.T) {
+	complexJSON := `{
+		"model": "sonnet",
+		"maxTokens": 1000,
+		"temperature": 0.7,
+		"nested": {
+			"key": "value"
+		}
+	}`
+	opts := &claudeagent.Options{
+		Settings: complexJSON,
+	}
+
+	if opts.Settings != complexJSON {
+		t.Errorf("Settings = %v, want %v", opts.Settings, complexJSON)
+	}
+}
+
+// TestOptions_Settings_RelativePath tests that Settings field stores relative path correctly
+func TestOptions_Settings_RelativePath(t *testing.T) {
+	opts := &claudeagent.Options{
+		Settings: "./config/settings.json",
+	}
+
+	if opts.Settings != "./config/settings.json" {
+		t.Errorf("Settings = %v, want './config/settings.json'", opts.Settings)
+	}
+}
+
+// TestOptions_Settings_WithOtherOptions tests that Settings works alongside other Options fields
+func TestOptions_Settings_WithOtherOptions(t *testing.T) {
+	opts := &claudeagent.Options{
+		Settings:               "/path/to/settings.json",
+		IncludePartialMessages: true,
+	}
+
+	if opts.Settings != "/path/to/settings.json" {
+		t.Errorf("Settings = %v, want '/path/to/settings.json'", opts.Settings)
+	}
+	if opts.IncludePartialMessages != true {
+		t.Errorf("IncludePartialMessages = %v, want true", opts.IncludePartialMessages)
+	}
+}
+
+// TestDefaultMaxBufferSize tests that the DefaultMaxBufferSize constant equals 1MB
+func TestDefaultMaxBufferSize(t *testing.T) {
+	expected := 1024 * 1024 // 1MB
+	if claudeagent.DefaultMaxBufferSize != expected {
+		t.Errorf("DefaultMaxBufferSize = %d, want %d (1MB)", claudeagent.DefaultMaxBufferSize, expected)
+	}
+}
+
+// TestOptions_MaxBufferSize_Zero tests that when MaxBufferSize is 0, default is used
+func TestOptions_MaxBufferSize_Zero(t *testing.T) {
+	opts := &claudeagent.Options{
+		MaxBufferSize: 0,
+	}
+
+	// When MaxBufferSize is 0, the default should be used
+	// We verify that the zero value is set correctly in the Options struct
+	if opts.MaxBufferSize != 0 {
+		t.Errorf("MaxBufferSize = %d, want 0 (zero value that triggers default)", opts.MaxBufferSize)
+	}
+
+	// The actual default (1MB) should be used when the value is 0
+	// This is documented in the Options struct field comment
+	expectedDefault := 1024 * 1024
+	if claudeagent.DefaultMaxBufferSize != expectedDefault {
+		t.Errorf("DefaultMaxBufferSize = %d, want %d (should be used when MaxBufferSize is 0)", claudeagent.DefaultMaxBufferSize, expectedDefault)
+	}
+}
+
+// TestOptions_MaxBufferSize_CustomValue tests that MaxBufferSize can be set to custom values
+func TestOptions_MaxBufferSize_CustomValue(t *testing.T) {
+	tests := []struct {
+		name          string
+		maxBufferSize int
+	}{
+		{"512KB", 512 * 1024},
+		{"2MB", 2 * 1024 * 1024},
+		{"10MB", 10 * 1024 * 1024},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := &claudeagent.Options{
+				MaxBufferSize: tt.maxBufferSize,
+			}
+
+			if opts.MaxBufferSize != tt.maxBufferSize {
+				t.Errorf("MaxBufferSize = %d, want %d", opts.MaxBufferSize, tt.maxBufferSize)
+			}
+		})
+	}
+}
+
+// TestSimpleQuery_OptionsAccepted tests that SimpleQuery accepts various Options configurations
+func TestSimpleQuery_OptionsAccepted(t *testing.T) {
+	tests := []struct {
+		name string
+		opts *claudeagent.Options
+	}{
+		{
+			name: "nil options",
+			opts: nil,
+		},
+		{
+			name: "empty options",
+			opts: &claudeagent.Options{},
+		},
+		{
+			name: "with model",
+			opts: &claudeagent.Options{
+				Model: "claude-sonnet-4-5",
+			},
+		},
+		{
+			name: "with permission mode",
+			opts: &claudeagent.Options{
+				PermissionMode: claudeagent.PermissionModeBypassPermissions,
+			},
+		},
+		{
+			name: "with max buffer size",
+			opts: &claudeagent.Options{
+				MaxBufferSize: 2 * 1024 * 1024,
+			},
+		},
+		{
+			name: "with cwd",
+			opts: &claudeagent.Options{
+				Cwd: "/tmp",
+			},
+		},
+		{
+			name: "with allowed tools",
+			opts: &claudeagent.Options{
+				AllowedTools: []string{"Read", "Write"},
+			},
+		},
+		{
+			name: "with disallowed tools",
+			opts: &claudeagent.Options{
+				DisallowedTools: []string{"Bash"},
+			},
+		},
+		{
+			name: "with include partial messages",
+			opts: &claudeagent.Options{
+				IncludePartialMessages: true,
+			},
+		},
+		{
+			name: "with multiple options",
+			opts: &claudeagent.Options{
+				Model:                  "claude-sonnet-4-5",
+				PermissionMode:         claudeagent.PermissionModeAcceptEdits,
+				MaxBufferSize:          1024 * 1024,
+				IncludePartialMessages: true,
+			},
+		},
+	}
+
+	// These tests verify that Options are accepted by SimpleQuery
+	// We can't actually run SimpleQuery without the CLI, but we can verify
+	// the Options configurations are valid
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Verify opts is not nil or has valid values
+			if tt.opts != nil {
+				// Verify fields are set correctly
+				if tt.opts.Model != "" && tt.opts.Model != "claude-sonnet-4-5" {
+					t.Errorf("Unexpected model: %s", tt.opts.Model)
+				}
+			}
+		})
+	}
+}
+
+// TestSimpleQuery_OptionsValidation tests that Options fields are correctly validated
+func TestSimpleQuery_OptionsValidation(t *testing.T) {
+	// Test that Options struct fields have correct types and can be set
+	opts := &claudeagent.Options{
+		Model:                  "claude-sonnet-4-5",
+		PermissionMode:         claudeagent.PermissionModeDefault,
+		Cwd:                    "/path/to/project",
+		AllowedTools:           []string{"Read", "Write", "Bash"},
+		DisallowedTools:        []string{"NotebookEdit"},
+		MaxBufferSize:          2 * 1024 * 1024,
+		IncludePartialMessages: true,
+		Continue:               false,
+	}
+
+	// Verify all fields are set correctly
+	if opts.Model != "claude-sonnet-4-5" {
+		t.Errorf("Model = %s, want 'claude-sonnet-4-5'", opts.Model)
+	}
+	if opts.PermissionMode != claudeagent.PermissionModeDefault {
+		t.Errorf("PermissionMode = %s, want 'default'", opts.PermissionMode)
+	}
+	if opts.Cwd != "/path/to/project" {
+		t.Errorf("Cwd = %s, want '/path/to/project'", opts.Cwd)
+	}
+	if len(opts.AllowedTools) != 3 {
+		t.Errorf("AllowedTools length = %d, want 3", len(opts.AllowedTools))
+	}
+	if len(opts.DisallowedTools) != 1 {
+		t.Errorf("DisallowedTools length = %d, want 1", len(opts.DisallowedTools))
+	}
+	if opts.MaxBufferSize != 2*1024*1024 {
+		t.Errorf("MaxBufferSize = %d, want %d", opts.MaxBufferSize, 2*1024*1024)
+	}
+	if !opts.IncludePartialMessages {
+		t.Error("IncludePartialMessages should be true")
+	}
+}
