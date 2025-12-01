@@ -1612,8 +1612,11 @@ type simpleQuerySource interface {
 //
 // # Parameters
 //
-//   - ctx: Context for cancellation. When cancelled, the query is terminated
-//     and the channel is closed. Any in-flight operations are aborted.
+//   - ctx: Context for cancellation. When cancelled, message consumption stops
+//     and the channel is closed. Note that context cancellation stops the message
+//     loop immediately, but the underlying Claude process termination happens
+//     asynchronously via cleanup goroutines. The process will be closed, but
+//     callers should not assume it terminates synchronously with context cancel.
 //   - prompt: The prompt to send to Claude.
 //   - opts: Optional configuration. Pass nil for defaults. Common options include
 //     Model, Cwd, PermissionMode, and AllowedTools.
