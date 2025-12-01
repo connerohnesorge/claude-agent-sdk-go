@@ -4,6 +4,7 @@ package transport
 
 import (
 	"fmt"
+	"os/exec"
 	"os/user"
 	"strconv"
 	"syscall"
@@ -41,17 +42,24 @@ func resolveUserCredential(username string) (*syscall.Credential, error) {
 	}, nil
 }
 
-// setUserCredential configures the command's SysProcAttr with user credentials.
+// configureUserCredential configures the command to run as the specified user.
 // If username is empty, this is a no-op.
 // Returns an error if user resolution fails.
-func setUserCredential(sysProcAttr *syscall.SysProcAttr, username string) error {
+func configureUserCredential(cmd *exec.Cmd, username string) error {
+	if username == "" {
+		return nil
+	}
+
 	cred, err := resolveUserCredential(username)
 	if err != nil {
 		return err
 	}
 
 	if cred != nil {
-		sysProcAttr.Credential = cred
+		if cmd.SysProcAttr == nil {
+			cmd.SysProcAttr = &syscall.SysProcAttr{}
+		}
+		cmd.SysProcAttr.Credential = cred
 	}
 
 	return nil

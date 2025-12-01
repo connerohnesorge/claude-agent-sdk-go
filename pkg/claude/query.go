@@ -155,6 +155,7 @@ func (q *queryImpl) start(prompt string) error {
 		Cwd:           q.opts.Cwd,
 		StderrHandler: q.opts.Stderr,
 		MaxBufferSize: maxBufferSize,
+		User:          q.opts.User,
 	}
 
 	// Start process

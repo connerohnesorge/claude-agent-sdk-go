@@ -59,6 +59,11 @@ func NewProcess(
 
 	cmd := createCommand(ctx, executable, config)
 
+	// Configure user credentials if specified (Unix-only)
+	if err := configureUserCredential(cmd, config.User); err != nil {
+		return nil, fmt.Errorf(errWrapFormat, ErrUserSwitchFailed, err)
+	}
+
 	pipes, err := createPipes(cmd)
 	if err != nil {
 		return nil, err
