@@ -480,6 +480,11 @@ func (q *queryImpl) Next(ctx context.Context) (SDKMessage, error) {
 	}
 }
 
+// SessionID returns the current query session identifier.
+func (q *queryImpl) SessionID() string {
+	return q.sessionID
+}
+
 // Close closes the query and cleans up resources.
 func (q *queryImpl) Close() error {
 	q.mu.Lock()
@@ -998,7 +1003,7 @@ func (q *queryImpl) SetModel(ctx context.Context, model *string) error {
 func (q *queryImpl) SetMaxThinkingTokens(maxThinkingTokens *int) error {
 	// Create a request with the maxThinkingTokens field
 	request := map[string]any{
-		"subtype":          "setMaxThinkingTokens",
+		"subtype":           "setMaxThinkingTokens",
 		"maxThinkingTokens": maxThinkingTokens,
 	}
 
@@ -1560,6 +1565,13 @@ func QueryFunc(prompt string, opts *Options) (Query, error) {
 	return newQueryImpl(prompt, opts)
 }
 
+// simpleQuerySource defines the subset of Query behavior needed for SimpleQuery streaming.
+type simpleQuerySource interface {
+	Next(context.Context) (SDKMessage, error)
+	Close() error
+	SessionID() string
+}
+
 // SimpleQuery sends a one-shot query to Claude and returns a channel of messages.
 //
 // This function is the recommended entry point for simple, stateless interactions
@@ -1611,7 +1623,7 @@ func QueryFunc(prompt string, opts *Options) (Query, error) {
 // Returns a receive-only channel of SDKMessage and an error. The channel:
 //   - Yields messages in order as they arrive
 //   - Closes automatically after a ResultMessage (success)
-//   - Closes automatically on error (error sent before close)
+//   - Emits an error ResultMessage before closing if streaming fails
 //   - Closes automatically when context is cancelled
 //
 // The error return is non-nil only if the query fails to start (e.g., invalid
@@ -1653,6 +1665,10 @@ func SimpleQuery(ctx context.Context, prompt string, opts *Options) (<-chan SDKM
 		return nil, err
 	}
 
+	return streamSimpleQuery(ctx, q), nil
+}
+
+func streamSimpleQuery(ctx context.Context, q simpleQuerySource) <-chan SDKMessage {
 	// Create buffered output channel
 	out := make(chan SDKMessage, msgChanBufferSize)
 
@@ -1671,9 +1687,13 @@ func SimpleQuery(ctx context.Context, prompt string, opts *Options) (<-chan SDKM
 				if err == io.EOF || err == context.Canceled || err == context.DeadlineExceeded {
 					return
 				}
-				// For other errors, we can't send them through the channel
-				// since the channel type is SDKMessage, not error.
-				// The query will be closed and any pending work abandoned.
+
+				// Surface streaming errors through the channel before closing.
+				select {
+				case out <- streamErrorMessage(q.SessionID(), err):
+				case <-ctx.Done():
+				}
+
 				return
 			}
 
@@ -1691,5 +1711,28 @@ func SimpleQuery(ctx context.Context, prompt string, opts *Options) (<-chan SDKM
 		}
 	}()
 
-	return out, nil
+	return out
+}
+
+func streamErrorMessage(sessionID string, err error) *SDKResultMessage {
+	errorText := err.Error()
+
+	if sdkErr, ok := clauderrs.AsSDKError(err); ok {
+		errorText = fmt.Sprintf(
+			"%s/%s: %s",
+			sdkErr.Category(),
+			sdkErr.Code(),
+			err.Error(),
+		)
+	}
+
+	return &SDKResultMessage{
+		BaseMessage: BaseMessage{
+			UUIDField:      uuid.New(),
+			SessionIDField: sessionID,
+		},
+		Subtype: ResultSubtypeErrorDuringExecution,
+		IsError: true,
+		Errors:  []string{errorText},
+	}
 }

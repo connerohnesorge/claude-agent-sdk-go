@@ -46,3 +46,4 @@ examples/basic/basic
 examples/mcp/mcp
 examples/streaming/streaming
 examples/control/control
+.cache
