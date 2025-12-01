@@ -2,6 +2,7 @@ package transport
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -73,8 +74,11 @@ func (t *StdioTransport) Read(ctx context.Context) ([]byte, error) {
 			return
 		}
 
-		// With maxBufferSize limit, read byte by byte and track size
-		var buffer []byte
+		// With maxBufferSize limit, read with efficient buffer growth
+		// Pre-allocate buffer with reasonable initial size (4KB)
+		var buf bytes.Buffer
+		buf.Grow(4096)
+
 		for {
 			b, err := t.reader.ReadByte()
 			if err != nil {
@@ -89,20 +93,20 @@ func (t *StdioTransport) Read(ctx context.Context) ([]byte, error) {
 				return
 			}
 
-			buffer = append(buffer, b)
+			buf.WriteByte(b)
 
 			// Check if we've exceeded the buffer size limit
-			if len(buffer) > t.maxBufferSize {
+			if buf.Len() > t.maxBufferSize {
 				resultChan <- result{
 					nil,
-					clauderrs.NewBufferSizeExceededError(t.maxBufferSize, len(buffer), "json_accumulation"),
+					clauderrs.NewBufferSizeExceededError(t.maxBufferSize, buf.Len(), "json_accumulation"),
 				}
 				return
 			}
 
 			// Check if we've reached the end of the line
 			if b == '\n' {
-				resultChan <- result{buffer, nil}
+				resultChan <- result{buf.Bytes(), nil}
 				return
 			}
 		}
