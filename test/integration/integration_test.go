@@ -75,7 +75,6 @@ func TestBasicQuery(t *testing.T) {
 	}
 }
 
-<<<<<<< HEAD
 func TestAgentWithDisallowedTools(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -103,7 +102,7 @@ func TestAgentWithDisallowedTools(t *testing.T) {
 	}
 
 	// Receive responses
-	msgChan, errChan := client.ReceiveResponse(ctx)
+	msgChan, errChan := client.ReceiveMessages(ctx)
 
 	gotAssistantResponse := false
 	gotResult := false
@@ -175,7 +174,7 @@ func TestAgentWithToolsAllowlist(t *testing.T) {
 	}
 
 	// Receive responses
-	msgChan, errChan := client.ReceiveResponse(ctx)
+	msgChan, errChan := client.ReceiveMessages(ctx)
 
 	gotAssistantResponse := false
 	gotResult := false
@@ -436,5 +435,4 @@ func TestAccountInfo(t *testing.T) {
 			t.Logf("AccountInfo on closed query correctly returned error: %v", err)
 		}
 	})
->>>>>>> ba1a810 (test: update integration and unit tests with comprehensive coverage)
 }

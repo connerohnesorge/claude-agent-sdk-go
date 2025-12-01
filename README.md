@@ -13,7 +13,7 @@ go get github.com/connerohnesorge/claude-agent-sdk-go
 ## Prerequisites
 
 - Go 1.23 or later
-- Claude Code CLI installed and available in PATH
+- Claude Code CLI version 2.0.0 or later installed and available in PATH
 - ANTHROPIC_API_KEY environment variable set (optional)
 
 ## Quick Start
@@ -154,6 +154,35 @@ opts := &claude.Options{
 	},
 }
 ```
+
+## CLI Version Checking
+
+The SDK automatically validates that the Claude Code CLI version is compatible before establishing a connection. This ensures you receive clear error messages rather than cryptic protocol failures when the CLI is outdated.
+
+### Minimum Required Version
+
+The SDK requires Claude Code CLI version **2.0.0** or later. This can be verified by running:
+
+```bash
+claude --version
+```
+
+### Skipping Version Check
+
+In some cases (testing, development, or using custom builds), you may want to skip the version check:
+
+```bash
+export CLAUDE_AGENT_SDK_SKIP_VERSION_CHECK=true
+```
+
+When the version check fails, you'll receive a clear error message indicating the current CLI version and the minimum required version.
+
+### Version Mismatch Errors
+
+If the CLI version is too old, the SDK returns a `version_mismatch` error with details:
+- The currently installed CLI version
+- The minimum required version (2.0.0)
+- A suggestion to upgrade the CLI
 
 ## Examples
 

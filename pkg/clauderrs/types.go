@@ -34,11 +34,12 @@ type ErrorCode string
 
 // Client error codes.
 const (
-	ErrCodeClientClosed  ErrorCode = "client_closed"
-	ErrCodeNoActiveQuery ErrorCode = "no_active_query"
-	ErrCodeInvalidState  ErrorCode = "invalid_state"
-	ErrCodeMissingAPIKey ErrorCode = "missing_api_key"
-	ErrCodeInvalidConfig ErrorCode = "invalid_config"
+	ErrCodeClientClosed     ErrorCode = "client_closed"
+	ErrCodeNoActiveQuery    ErrorCode = "no_active_query"
+	ErrCodeInvalidState     ErrorCode = "invalid_state"
+	ErrCodeMissingAPIKey    ErrorCode = "missing_api_key"
+	ErrCodeInvalidConfig    ErrorCode = "invalid_config"
+	ErrCodeVersionMismatch  ErrorCode = "version_mismatch"
 )
 
 // API error codes.
@@ -108,5 +109,7 @@ const (
 
 // Metadata keys.
 const (
-	MetadataKeySessionID = "session_id"
+	MetadataKeySessionID      = "session_id"
+	MetadataKeyCurrentVersion = "current_version"
+	MetadataKeyMinimumVersion = "minimum_version"
 )

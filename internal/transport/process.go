@@ -45,6 +45,12 @@ func NewProcess(
 		return nil, err
 	}
 
+	// Verify CLI version compatibility before spawning process.
+	// Can be skipped by setting CLAUDE_AGENT_SDK_SKIP_VERSION_CHECK=true
+	if err := checkCLIVersion(executable); err != nil {
+		return nil, err
+	}
+
 	cmd := createCommand(ctx, executable, config)
 
 	pipes, err := createPipes(cmd)

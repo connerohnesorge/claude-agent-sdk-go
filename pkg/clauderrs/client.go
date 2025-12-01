@@ -18,3 +18,13 @@ func (e *ClientError) WithSessionID(sessionID string) *ClientError {
 
 	return e
 }
+
+// NewVersionMismatchError creates a client error for version mismatches.
+func NewVersionMismatchError(currentVersion string, minimumVersion string) *ClientError {
+	message := "Claude Code CLI version " + currentVersion + " is below minimum required version " + minimumVersion + ". Please upgrade the CLI to continue."
+	err := NewClientError(ErrCodeVersionMismatch, message, nil)
+	_ = err.WithMetadata(MetadataKeyCurrentVersion, currentVersion)
+	_ = err.WithMetadata(MetadataKeyMinimumVersion, minimumVersion)
+
+	return err
+}
