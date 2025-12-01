@@ -30,6 +30,11 @@ type ProcessConfig struct {
 	Cwd           string
 	StderrHandler func(string)
 	MaxBufferSize int
+	// User specifies the username to run the subprocess as.
+	// When set, the subprocess will run with the credentials of the specified user.
+	// This is Unix-specific and requires appropriate permissions (typically root).
+	// When empty, the subprocess runs as the current user.
+	User string
 }
 
 // NewProcess spawns a new Claude Code process.

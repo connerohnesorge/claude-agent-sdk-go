@@ -114,6 +114,34 @@ type Options struct {
 
 	// Agents
 	Agents map[string]AgentDefinition
+
+	// User specifies the username to run the Claude Code CLI subprocess as.
+	// When set, the subprocess will run with the credentials of the specified user.
+	//
+	// This feature is Unix-specific and requires appropriate permissions:
+	//   - The parent process must have CAP_SETUID and CAP_SETGID capabilities
+	//   - Typically requires running as root
+	//   - On macOS, requires root or appropriate entitlements
+	//
+	// When empty (default), the subprocess runs as the current user.
+	//
+	// Use cases:
+	//   - Security isolation: Run untrusted code with reduced privileges
+	//   - Multi-tenant environments: Isolate different users' processes
+	//   - Container deployments: Run as non-root users following security best practices
+	//   - Principle of least privilege: Ensure processes only have necessary permissions
+	//
+	// Platform support:
+	//   - Linux: Fully supported
+	//   - macOS: Supported (requires root)
+	//   - Windows: Not supported (will be ignored)
+	//
+	// Example:
+	//
+	//	opts := &claude.Options{
+	//	    User: "nobody",  // Run as unprivileged user
+	//	}
+	User string
 }
 
 // AgentDefinition defines a custom agent.

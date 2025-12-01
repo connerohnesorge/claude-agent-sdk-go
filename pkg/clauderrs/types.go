@@ -70,10 +70,11 @@ const (
 
 // Transport error codes.
 const (
-	ErrCodeIOError       ErrorCode = "io_error"
-	ErrCodeReadFailed    ErrorCode = "read_failed"
-	ErrCodeWriteFailed   ErrorCode = "write_failed"
-	ErrCodeTransportInit ErrorCode = "transport_init"
+	ErrCodeIOError             ErrorCode = "io_error"
+	ErrCodeReadFailed          ErrorCode = "read_failed"
+	ErrCodeWriteFailed         ErrorCode = "write_failed"
+	ErrCodeTransportInit       ErrorCode = "transport_init"
+	ErrCodeBufferSizeExceeded  ErrorCode = "buffer_size_exceeded"
 )
 
 // Process error codes.
