@@ -34,7 +34,15 @@ var (
 	ErrVersionTooOld = errors.New("Claude CLI version is below minimum required")
 )
 
-// versionRegex matches semantic version patterns like "2.0.0" or "2.0.0-beta.1"
+// versionRegex matches semantic version patterns like "2.0.0" or "v2.0.0-beta.1".
+// It captures the first semver pattern found in the output, which is intentional
+// since CLI version output typically places the primary version at or near the start
+// (e.g., "claude version 2.0.0" or "v2.0.0-beta.1").
+//
+// Note: This regex extracts the FIRST occurrence of a semver pattern. In edge cases
+// where output contains multiple versions (e.g., "v1.2.3 updated from 0.9.8"),
+// the first match (1.2.3) is returned. This is correct for CLI --version output
+// which consistently places the current version first.
 var versionRegex = regexp.MustCompile(`(\d+)\.(\d+)\.(\d+)`)
 
 // checkCLIVersion verifies that the Claude CLI version meets the minimum requirements.
