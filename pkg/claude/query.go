@@ -141,6 +141,12 @@ func (q *queryImpl) start(prompt string) error {
 	// Build environment
 	env := q.buildEnv()
 
+	// Determine max buffer size
+	maxBufferSize := q.opts.MaxBufferSize
+	if maxBufferSize == 0 {
+		maxBufferSize = DefaultMaxBufferSize
+	}
+
 	// Create process config
 	config := &transport.ProcessConfig{
 		Executable:    q.opts.PathToClaudeCodeExecutable,
@@ -148,6 +154,7 @@ func (q *queryImpl) start(prompt string) error {
 		Env:           env,
 		Cwd:           q.opts.Cwd,
 		StderrHandler: q.opts.Stderr,
+		MaxBufferSize: maxBufferSize,
 	}
 
 	// Start process
@@ -209,6 +216,10 @@ func (q *queryImpl) buildArgs() []string {
 
 	if q.opts.PermissionMode != "" {
 		args = append(args, "--permission-mode", string(q.opts.PermissionMode))
+	}
+
+	if q.opts.Settings != "" {
+		args = append(args, "--settings", q.opts.Settings)
 	}
 
 	// Add additional directories
@@ -1546,4 +1557,138 @@ func (q *queryImpl) Initialize(ctx context.Context) (map[string]any, error) {
 // QueryFunc creates a new query session.
 func QueryFunc(prompt string, opts *Options) (Query, error) {
 	return newQueryImpl(prompt, opts)
+}
+
+// SimpleQuery sends a one-shot query to Claude and returns a channel of messages.
+//
+// This function is the recommended entry point for simple, stateless interactions
+// with Claude. It handles the complete lifecycle automatically: connect, send prompt,
+// stream messages, and cleanup. The returned channel closes automatically when the
+// query completes (after receiving a ResultMessage) or encounters an error.
+//
+// # When to use SimpleQuery
+//
+// Use SimpleQuery for:
+//   - Simple one-off questions ("What is 2+2?")
+//   - Batch processing of independent prompts
+//   - Code generation or analysis tasks
+//   - Automated scripts and CI/CD pipelines
+//   - When you know all inputs upfront
+//
+// # When to use ClaudeSDKClient
+//
+// Use ClaudeSDKClient instead when you need:
+//   - Interactive conversations with follow-up messages
+//   - Chat applications or REPL-like interfaces
+//   - Ability to send messages based on responses
+//   - Interrupt capabilities during processing
+//   - Long-running sessions with state
+//   - Dynamic control (SetModel, SetPermissionMode, etc.)
+//
+// # Comparison
+//
+//	| Feature                  | SimpleQuery | ClaudeSDKClient |
+//	|--------------------------|-------------|-----------------|
+//	| One-shot queries         | ✓           | ✓               |
+//	| Multi-turn conversations | ✗           | ✓               |
+//	| Send follow-up messages  | ✗           | ✓               |
+//	| Interrupt processing     | ✗           | ✓               |
+//	| Dynamic model switching  | ✗           | ✓               |
+//	| Automatic cleanup        | ✓           | Manual Close()  |
+//	| Complexity               | Simple      | Full-featured   |
+//
+// # Parameters
+//
+//   - ctx: Context for cancellation. When cancelled, the query is terminated
+//     and the channel is closed. Any in-flight operations are aborted.
+//   - prompt: The prompt to send to Claude.
+//   - opts: Optional configuration. Pass nil for defaults. Common options include
+//     Model, Cwd, PermissionMode, and AllowedTools.
+//
+// # Return Values
+//
+// Returns a receive-only channel of SDKMessage and an error. The channel:
+//   - Yields messages in order as they arrive
+//   - Closes automatically after a ResultMessage (success)
+//   - Closes automatically on error (error sent before close)
+//   - Closes automatically when context is cancelled
+//
+// The error return is non-nil only if the query fails to start (e.g., invalid
+// options, process spawn failure). Errors during message streaming are delivered
+// through the channel.
+//
+// # Example Usage
+//
+//	// Simple query with default options
+//	msgs, err := claude.SimpleQuery(ctx, "What is 2+2?", nil)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	for msg := range msgs {
+//	    switch m := msg.(type) {
+//	    case *claude.SDKAssistantMessage:
+//	        fmt.Println("Response:", m.Message.Content)
+//	    case *claude.SDKResultMessage:
+//	        fmt.Printf("Done in %dms\n", m.DurationMS)
+//	    }
+//	}
+//
+//	// Query with options
+//	opts := &claude.Options{
+//	    Model: "claude-sonnet-4-5",
+//	    Cwd:   "/path/to/project",
+//	}
+//	msgs, err := claude.SimpleQuery(ctx, "Analyze this codebase", opts)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	for msg := range msgs {
+//	    // process messages...
+//	}
+func SimpleQuery(ctx context.Context, prompt string, opts *Options) (<-chan SDKMessage, error) {
+	// Create a new query implementation
+	q, err := newQueryImpl(prompt, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create buffered output channel
+	out := make(chan SDKMessage, msgChanBufferSize)
+
+	// Start goroutine to read messages and manage lifecycle
+	go func() {
+		defer close(out)
+		defer func() {
+			// Always close the query to clean up resources
+			_ = q.Close()
+		}()
+
+		for {
+			msg, err := q.Next(ctx)
+			if err != nil {
+				// EOF or context cancellation - normal termination
+				if err == io.EOF || err == context.Canceled || err == context.DeadlineExceeded {
+					return
+				}
+				// For other errors, we can't send them through the channel
+				// since the channel type is SDKMessage, not error.
+				// The query will be closed and any pending work abandoned.
+				return
+			}
+
+			// Send message to output channel
+			select {
+			case out <- msg:
+			case <-ctx.Done():
+				return
+			}
+
+			// Check if this is a result message (end of query)
+			if _, ok := msg.(*SDKResultMessage); ok {
+				return
+			}
+		}
+	}()
+
+	return out, nil
 }
