@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+
+	"github.com/connerohnesorge/claude-agent-sdk-go/pkg/clauderrs"
 )
 
 // Transport handles communication with Claude Code process.
@@ -21,22 +23,25 @@ type Transport interface {
 
 // StdioTransport implements Transport using stdio.
 type StdioTransport struct {
-	stdin  io.WriteCloser
-	stdout io.ReadCloser
-	stderr io.ReadCloser
-	reader *bufio.Reader
+	stdin         io.WriteCloser
+	stdout        io.ReadCloser
+	stderr        io.ReadCloser
+	reader        *bufio.Reader
+	maxBufferSize int
 }
 
 // NewStdioTransport creates a new stdio transport.
 func NewStdioTransport(
 	stdin io.WriteCloser,
 	stdout, stderr io.ReadCloser,
+	maxBufferSize int,
 ) *StdioTransport {
 	return &StdioTransport{
-		stdin:  stdin,
-		stdout: stdout,
-		stderr: stderr,
-		reader: bufio.NewReader(stdout),
+		stdin:         stdin,
+		stdout:        stdout,
+		stderr:        stderr,
+		reader:        bufio.NewReader(stdout),
+		maxBufferSize: maxBufferSize,
 	}
 }
 
@@ -50,21 +55,57 @@ func (t *StdioTransport) Read(ctx context.Context) ([]byte, error) {
 	resultChan := make(chan result, 1)
 
 	go func() {
-		line, err := t.reader.ReadBytes('\n')
-		if err != nil {
-			if err == io.EOF {
-				resultChan <- result{nil, err}
-
+		// If maxBufferSize is 0, no limit is enforced
+		if t.maxBufferSize == 0 {
+			line, err := t.reader.ReadBytes('\n')
+			if err != nil {
+				if err == io.EOF {
+					resultChan <- result{nil, err}
+					return
+				}
+				resultChan <- result{
+					nil,
+					fmt.Errorf(errWrapFormat, ErrReadFailed, err),
+				}
 				return
 			}
-			resultChan <- result{
-				nil,
-				fmt.Errorf(errWrapFormat, ErrReadFailed, err),
-			}
-
+			resultChan <- result{line, nil}
 			return
 		}
-		resultChan <- result{line, nil}
+
+		// With maxBufferSize limit, read byte by byte and track size
+		var buffer []byte
+		for {
+			b, err := t.reader.ReadByte()
+			if err != nil {
+				if err == io.EOF {
+					resultChan <- result{nil, err}
+					return
+				}
+				resultChan <- result{
+					nil,
+					fmt.Errorf(errWrapFormat, ErrReadFailed, err),
+				}
+				return
+			}
+
+			buffer = append(buffer, b)
+
+			// Check if we've exceeded the buffer size limit
+			if len(buffer) > t.maxBufferSize {
+				resultChan <- result{
+					nil,
+					clauderrs.NewBufferSizeExceededError(t.maxBufferSize, len(buffer), "json_accumulation"),
+				}
+				return
+			}
+
+			// Check if we've reached the end of the line
+			if b == '\n' {
+				resultChan <- result{buffer, nil}
+				return
+			}
+		}
 	}()
 
 	select {

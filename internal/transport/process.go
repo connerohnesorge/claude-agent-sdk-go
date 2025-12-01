@@ -29,6 +29,7 @@ type ProcessConfig struct {
 	Env           []string
 	Cwd           string
 	StderrHandler func(string)
+	MaxBufferSize int
 }
 
 // NewProcess spawns a new Claude Code process.
@@ -58,7 +59,7 @@ func NewProcess(
 		return nil, err
 	}
 
-	transport := NewStdioTransport(pipes.stdin, pipes.stdout, pipes.stderr)
+	transport := NewStdioTransport(pipes.stdin, pipes.stdout, pipes.stderr, config.MaxBufferSize)
 
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf(errWrapFormat, ErrProcessStart, err)
