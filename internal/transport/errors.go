@@ -38,4 +38,17 @@ var (
 
 	// ErrWriteFailed is returned when writing to stdin fails.
 	ErrWriteFailed = errors.New("failed to write to stdin")
+
+	// ErrUserLookupFailed is returned when user lookup fails.
+	// This typically means the specified username doesn't exist on the system.
+	ErrUserLookupFailed = errors.New("user lookup failed")
+
+	// ErrInvalidUserID is returned when the user's UID or GID cannot be parsed.
+	// This is rare and indicates a system configuration issue.
+	ErrInvalidUserID = errors.New("invalid user ID")
+
+	// ErrUserSwitchFailed is returned when setting process credentials fails.
+	// This typically means the parent process lacks sufficient privileges
+	// (CAP_SETUID/CAP_SETGID capabilities or root access).
+	ErrUserSwitchFailed = errors.New("user switch failed")
 )
