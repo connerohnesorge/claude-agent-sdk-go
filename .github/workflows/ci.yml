@@ -21,7 +21,7 @@ jobs:
         run: nix develop -c go build ./...
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v7
         with:
           file: ./coverage.out
           flags: unittests
